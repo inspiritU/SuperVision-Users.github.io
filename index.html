@@ -1,0 +1,376 @@
+<!doctype html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="initial-scale=1.0, user-scalable=no, width=device-width">
+    <title>共享单车用户端——秩序化停放引导功能</title>
+    <link rel="stylesheet" href="https://a.amap.com/jsapi_demos/static/demo-center/css/demo-center.css" />
+    <script type="text/javascript" src="http://code.jquery.com/jquery-latest.js"></script>
+    <script src="https://webapi.amap.com/maps?v=1.4.14&key=017c28dbcffb21ab5f3acf8cfa3e60f8&plugin=AMap.PolyEditor"></script>
+    <script src="https://a.amap.com/jsapi_demos/static/demo-center/js/demoutils.js"></script>
+    <meta name="keywords" content="提示框插件,SweetAlert" />
+    <meta name="description" content="SweetAlert可以替代Javascript原生的alert和confirm等函数呈现的弹出提示框，它将提示框进行了美化，并且允许自定义，支持设置提示框标题、提示类型、内容展示图片、确认取消按钮文本、点击后回调函数等。" />
+
+    <link rel="stylesheet" type="text/css" href="sweetalert.css"/>
+    <style>
+        html, body, #container {
+            height: 100%;
+            width: 100%;
+            display:relative;
+        }
+
+        .amap-icon img,
+        .amap-marker-content img{
+            width: 25px;
+            height: 34px;
+        }
+
+        .marker {
+            position: absolute;
+            top: -20px;
+            right: -118px;
+            color: #fff;
+            padding: 4px 10px;
+            box-shadow: 1px 1px 1px rgba(10, 10, 10, .2);
+            white-space: nowrap;
+            font-size: 12px;
+            font-family: "";
+            background-color: #25A5F7;
+            border-radius: 3px;
+        }
+        .demo{width:300px; margin:60px auto 10px auto}
+        .demo_2 button{
+            width: 200px;
+            align-items: center;
+
+        }
+        @media only screen and (min-width: 420px) {
+            .demo{width:500px; margin:60px auto 10px auto}
+
+        }
+        button, .button {
+            background-color: #000000;color: white;border: none;box-shadow: none;
+            font-size: 17px;font-weight: 500;font-weight: 600;
+            border-radius: 3px;padding: 15px 35px;margin: 26px 5px 0 5px;cursor: pointer;
+
+        }
+        button:hover, .button:hover {background-color: rgba(73, 73, 73, 0.71); }
+
+        .input-card{
+            background-color: rgba(255, 255, 255, 0);
+            width: 18rem;
+            z-index: 170;
+            bottom: 1px solid red !important;
+        }
+
+        .input-card .btn{
+            margin-right: .8rem;
+        }
+
+        .input-card .btn:last-child{
+            margin-right: 0;
+        }
+        .demo_2{
+            position: absolute;
+            background-color: rgba(73, 73, 73, 0);
+            z-index: 9999;
+            bottom: 30px;
+            left: 0;
+            right: 0;
+            margin: auto;
+            text-align: center;
+            align-items: center;
+
+        }
+    </style>
+</head>
+<body>
+
+<div id="container"></div>
+
+
+
+
+<script type="text/javascript">
+    var map = new AMap.Map("container", {
+        // showIndoorMap:true,
+        // showLabel:true,
+
+        resizeEnable: true,
+        expandZoomRange:true,
+        mapStyle:'amap://styles/blue',
+        zoom:10,
+        zooms:[3,20],
+        center: [116.486073,39.873238],
+
+
+    });
+    AMap.plugin([
+        'AMap.ToolBar',
+        'AMap.Scale',
+
+    ], function(){
+        // 在图面添加工具条控件，工具条控件集成了缩放、平移、定位等功能按钮在内的组合控件
+        map.addControl(new AMap.ToolBar());
+
+        // 在图面添加比例尺控件，展示地图在当前层级和纬度下的比例尺
+        map.addControl(new AMap.Scale());
+
+
+
+
+    });
+    //拖拽
+    var marker = new AMap.Marker({
+        position: map.getCenter(),
+        draggable: true,
+        cursor: 'move',
+        raiseOnDrag: false,
+        icon:'image/bike1.png',
+        zIndex: 101
+        // position: map.getCenter(),
+        // // icon: '//a.amap.com/jsapi_demos/static/demo-center/icons/poi-marker-default.png',
+        // icon:'image/bike1.png',
+        // offset: new AMap.Pixel(-13, -30),
+        // // 设置是否可以拖拽
+        // draggable: true,
+        // cursor: 'move',
+        // // 设置拖拽效果
+        // raiseOnDrag: true
+    });
+
+    marker.setMap(map);
+
+    $('input[name=lng]').val(marker.getPosition().lng);
+    $('input[name=lat]').val(marker.getPosition().lat);
+
+    AMap.event.addListener(marker, "dragstart", function(e) {
+        $('input[name=lng]').val(marker.getPosition().lng);
+        $('input[name=lat]').val(marker.getPosition().lat);
+    });
+
+    AMap.event.addListener(marker, "dragging", function(e) {
+        $('input[name=address]').val('检索地址中......');
+        $('input[name=lng]').val(marker.getPosition().lng);
+        $('input[name=lat]').val(marker.getPosition().lat);
+    });
+
+    AMap.event.addListener(marker, "dragend", function(e) {
+        $('input[name=lng]').val(marker.getPosition().lng);
+        $('input[name=lat]').val(marker.getPosition().lat);
+        lnglatXY = [marker.getPosition().lng, marker.getPosition().lat];
+        var geocoder = new AMap.Geocoder({
+            radius: 1000,
+            extensions: "all"
+        });
+        geocoder.getAddress(lnglatXY, function(status, result) {
+            if (status === 'complete' && result.info === 'OK') {
+                var address = result.regeocode.formattedAddress; //返回地址描述
+                $('input[name=address]').val(address);
+            }
+        });
+    });
+
+
+    //实训楼1
+    var path1 = [[116.485708,39.872867],[116.485780,39.872867],[116.485780,39.8728886],[116.485708,39.8728886]]
+    var polygon1 = new AMap.Polygon({
+        path: path1,
+        strokeColor:'#a4ff56',
+        strokeWeight: 1,
+        strokeOpacity: 1,
+        fillOpacity: 0.2,
+        fillColor: '#a4ff56',
+        zIndex: 50,
+    })
+    map.add(polygon1)// 缩放地图到合适的视野级别
+    map.setFitView([polygon1])
+    //实训楼2
+    var path2 = [[116.485708,39.872845],[116.485780,39.872845],[116.485780,39.8728666],[116.485708,39.8728666]]
+    var polygon2 = new AMap.Polygon({
+        path: path2,
+        strokeColor:'#a4ff56',
+        strokeWeight: 1,
+        strokeOpacity: 1,
+        fillOpacity: 0.2,
+        fillColor: '#a4ff56',
+
+        zIndex: 100,
+    })
+    map.add(polygon2)// 缩放地图到合适的视野级别
+    map.setFitView([polygon2])
+    //实训楼3
+    var path3 = [[116.485708,39.872823],[116.485780,39.872823],[116.485780,39.8728446],[116.485708,39.8728446]]
+    var polygon3 = new AMap.Polygon({
+        path: path3,
+        strokeColor:'#a4ff56',
+        strokeWeight: 1,
+        strokeOpacity: 1,
+        fillOpacity: 0.2,
+        fillColor: '#a4ff56',
+
+        zIndex: 50,
+    })
+    map.add(polygon3)// 缩放地图到合适的视野级别
+    map.setFitView([polygon3])
+    //交通楼1
+    var path4 = [[116.486049,39.873053],[116.486111,39.873053],[116.486111,39.8730746],[116.486049,39.8730746]]
+    var polygon4 = new AMap.Polygon({
+        path: path4,
+        strokeColor:'#a4ff56',
+        strokeWeight: 1,
+        strokeOpacity: 1,
+        fillOpacity: 0.2,
+        fillColor: '#a4ff56',
+
+        zIndex: 50,
+    })
+    map.add(polygon4)// 缩放地图到合适的视野级别
+    map.setFitView([polygon4])
+    //交通楼2
+    var path5 = [[116.485998,39.873250],[116.486060,39.873250],[116.486060,39.8732716],[116.485998,39.8732716]]
+    var polygon5 = new AMap.Polygon({
+        path: path5,
+        strokeColor:'#a4ff56',
+        strokeWeight: 1,
+        strokeOpacity: 1,
+        fillOpacity: 0.2,
+        fillColor: '#a4ff56',
+
+        zIndex: 50,
+    })
+    map.add(polygon5)// 缩放地图到合适的视野级别
+    map.setFitView([polygon5])
+    //交通楼3
+    var path6 = [[116.486060,39.873250],[116.486122,39.873250],[116.486122,39.8732716],[116.486060,39.8732716]]
+    var polygon6 = new AMap.Polygon({
+        path: path6,
+        strokeColor:'#a4ff56',
+        strokeWeight: 1,
+        strokeOpacity: 1,
+        fillOpacity: 0.2,
+        fillColor: '#a4ff56',
+        zIndex: 50,
+    })
+    map.add(polygon6)// 缩放地图到合适的视野级别
+    map.setFitView([polygon6])
+    //软件楼1
+    var path7 = [[116.486406,39.873699],[116.4864276,39.873699],[116.4864276,39.873761],[116.486406,39.873761]]
+    var polygon7 = new AMap.Polygon({
+        path: path7,
+        strokeColor:'#a4ff56',
+        strokeWeight: 1,
+        strokeOpacity: 1,
+        fillOpacity: 0.2,
+        fillColor: '#a4ff56',
+        zIndex: 50,
+    })
+    map.add(polygon7)// 缩放地图到合适的视野级别
+    map.setFitView([polygon7])
+    //软件楼2
+    var path8 = [[116.486229,39.873431],[116.4862444,39.8734156],[116.4862884,39.8734596],[116.486273,39.873475]]
+    var polygon8 = new AMap.Polygon({
+        path: path8,
+        strokeColor:'#a4ff56',
+        strokeWeight: 1,
+        strokeOpacity: 1,
+        fillOpacity: 0.2,
+        fillColor: '#a4ff56',
+        zIndex: 50,
+    })
+    map.add(polygon8)// 缩放地图到合适的视野级别
+    map.setFitView([polygon8])
+    //软件楼3
+    var path9 = [[116.4862884,39.8734596],[116.486273,39.873475],[116.486317,39.873519],[116.4863324,39.8735036]]
+    var polygon9 = new AMap.Polygon({
+        path: path9,
+        strokeColor:'#a4ff56',
+        strokeWeight: 1,
+        strokeOpacity: 1,
+        fillOpacity: 0.2,
+        fillColor: '#a4ff56',
+        zIndex: 50,
+    })
+    map.add(polygon9)// 缩放地图到合适的视野级别
+    map.setFitView([polygon9])
+
+
+
+
+
+</script>
+<script type="text/javascript" src="jquery.js"></script>
+<script type="text/javascript" src="sweetalert.min.js"></script>
+<script type="text/javascript">
+    $(function() {
+
+        $(".demo_2 button").click(function() {
+            if (((marker.getPosition().lng)>116.485708&&(marker.getPosition().lng)<116.485780&&(marker.getPosition().lat)>39.872867&&(marker.getPosition().lat)<39.8728886)||
+                ((marker.getPosition().lng)>116.485708&&(marker.getPosition().lng)<116.485780&&(marker.getPosition().lat)>39.872845&&(marker.getPosition().lat)<39.8728886)||
+                ((marker.getPosition().lng)>116.485708&&(marker.getPosition().lng)<116.485780&&(marker.getPosition().lat)>39.872823&&(marker.getPosition().lat)<39.8728446)||
+                ((marker.getPosition().lng)>116.486049&&(marker.getPosition().lng)<116.486111&&(marker.getPosition().lat)>39.873053&&(marker.getPosition().lat)<39.8730746)||
+                ((marker.getPosition().lng)>116.485998&&(marker.getPosition().lng)<116.486060&&(marker.getPosition().lat)>39.873250&&(marker.getPosition().lat)<39.8732716)||
+                ((marker.getPosition().lng)>116.486060&&(marker.getPosition().lng)<116.486122&&(marker.getPosition().lat)>39.873250&&(marker.getPosition().lat)<39.8732716)||
+                ((marker.getPosition().lng)>116.486406&&(marker.getPosition().lng)<1116.4864276&&(marker.getPosition().lat)>39.873699&&(marker.getPosition().lat)<39.873761)||
+                ((((116.4862444-116.486229)*((marker.getPosition().lat)-39.873431)-(39.8734156-39.873431)*((marker.getPosition().lng)-116.486229))>0&&
+                    ((116.4863324-116.4862444)*((marker.getPosition().lat)-39.8734156)-(39.8735036-39.8734156)*((marker.getPosition().lng)-116.4862444))>0&&
+                    ((116.486317-116.4863324)*((marker.getPosition().lat)-39.8735036)-(39.873519-39.8735036)*((marker.getPosition().lng)-116.4863324))>0&&
+                    ((116.486229-116.486317)*((marker.getPosition().lat)-39.873519)-(39.873431-39.873519)*((marker.getPosition().lng)-116.486317))>0)||
+                    (((116.4862444-116.486229)*((marker.getPosition().lat)-39.873431)-(39.8734156-39.873431)*((marker.getPosition().lng)-116.486229))<0&&
+                        ((116.4863324-116.4862444)*((marker.getPosition().lat)-39.8734156)-(39.8735036-39.8734156)*((marker.getPosition().lng)-116.4862444))<0&&
+                        ((116.486317-116.4863324)*((marker.getPosition().lat)-39.8735036)-(39.873519-39.8735036)*((marker.getPosition().lng)-116.4863324))<0&&
+                        ((116.486229-116.486317)*((marker.getPosition().lat)-39.873519)-(39.873431-39.873519)*((marker.getPosition().lng)-116.486317))<0)
+                )
+
+            ){
+                swal("Good!", "已规范停车", "success");
+            }
+
+
+
+
+
+            else {
+                swal({
+                    title: "您确定要在非规范停放区域结束行程吗？",
+                    // text: "您确定要删除这条数据？",
+                    type: "warning",
+                    showCancelButton: true,
+                    cancelButtonText:"是的，在此处停放",
+                    closeOnConfirm: false,
+                    confirmButtonText: "不是，我要重新规范停放",
+                    confirmButtonColor: "#ec6c62"
+                }, function() {
+                    $.ajax({
+                        url: "do.php",
+                        type: "DELETE"
+                    }).done(function(data) {
+                        swal("操作成功!", "已成功删除数据！", "success");
+                    }).error(function(data) {
+                        swal("Good!", " ", "success");
+                    });
+                });
+            }
+
+        });
+
+
+
+
+
+
+    });
+</script>
+<!--<div class="input-card">-->
+    <div class="demo_2">
+        <button>结束用车</button>
+
+    </div>
+    <!--<input type="text" placeholder="经度" name="lng" class="form-control">-->
+    <!--<input type="text" placeholder="纬度" name="lat" class="form-control">-->
+    <!--<input type="text" placeholder="地址" name="address" class="form-control">-->
+
+<!--</div>-->
+</body>
+</html>

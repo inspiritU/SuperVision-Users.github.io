@@ -1,0 +1,116 @@
+<!doctype html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>共享单车用户端——秩序化停放引导功能</title>
+
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        html, body, #container {
+            height: 100%;
+            width: 100%;
+            display:relative;
+        }
+
+        .amap-icon img,
+        .amap-marker-content img{
+            width: 25px;
+            height: 34px;
+        }
+
+        .marker {
+            position: absolute;
+            top: -20px;
+            right: -118px;
+            color: #fff;
+            padding: 4px 10px;
+            box-shadow: 1px 1px 1px rgba(10, 10, 10, .2);
+            white-space: nowrap;
+            font-size: 12px;
+            font-family: "";
+            background-color: #25A5F7;
+            border-radius: 3px;
+        }
+        .demo{width:300px; margin:60px auto 10px auto}
+        .demo_2 button{
+            width: 400px;
+            height: 100px;
+            font-size:32px;
+            align-items: center;
+
+        }
+        @media only screen and (min-width: 420px) {
+            .demo{width:500px; margin:60px auto 10px auto}
+
+        }
+        button, .button {
+            background-color: #000000;color: white;border: none;box-shadow: none;
+            font-size: 17px;font-weight: 500;font-weight: 600;
+            border-radius: 3px;padding: 15px 35px;margin: 26px 5px 0 5px;cursor: pointer;
+
+        }
+        button:hover, .button:hover {background-color: rgba(73, 73, 73, 0.71); }
+
+        .input-card{
+            background-color: rgba(255, 255, 255, 0);
+            width: 18rem;
+            z-index: 170;
+            bottom: 1px solid red !important;
+        }
+
+        .input-card .btn{
+            margin-right: .8rem;
+        }
+
+        .input-card .btn:last-child{
+            margin-right: 0;
+        }
+        .demo_2{
+            position: absolute;
+            background-color: rgba(73, 73, 73, 0);
+            z-index: 9999;
+            bottom: 45px;
+            left: 0;
+            right: 0;
+            margin: auto;
+            text-align: center;
+            align-items: center;
+
+        }
+    </style>
+
+</head>
+<body>
+
+<div class="intro">
+    <h1 class="intro__title">共享单车用户端</h1>
+    <p class="intro__body">秩序化停放引导功能</p>
+</div>
+
+<div class="carousel">
+
+    <input type="checkbox" class="faux-ui-facia">
+    <div class="slide" slide="2" annot="示意图2.">
+        <img src="image/停放引导2.png" alt="Slide 2">
+    </div>
+    <input type="checkbox" class="faux-ui-facia">
+    <div class="slide" slide="1" annot="示意图1.">
+        <img src="image/停放引导1.png" alt="Slide 1">
+    </div>
+    <div class="counter" count="2"> / 2</div>
+</div>
+
+
+</script>
+<script type="text/javascript" src="jquery.js"></script>
+<script type="text/javascript" src="sweetalert.min.js"></script>
+<script type="text/javascript">
+
+</script>
+<div class="demo_2" onclick="window.open('index.html','_self')">
+    <button >开始用车</button>
+
+
+</div>
+</body>
+</html>
